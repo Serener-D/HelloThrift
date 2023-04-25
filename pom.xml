@@ -11,6 +11,7 @@
     <modules>
         <module>JavaClient</module>
         <module>JavaServer</module>
+        <module>GeneratedThrift</module>
     </modules>
 
     <properties>
