@@ -2,7 +2,6 @@ package com.github;
 
 public class CargoServiceImpl implements CargoService.Iface {
 
-
     @Override
     public String ping() {
         return "Pong";
