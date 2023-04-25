@@ -41,8 +41,8 @@ service CargoService extends BaseService {
 
     string calculateShippingCost(1: Cargo cargo) throws (1: EmptyCargoException emptyException, 2: CargoWeigtExceededException weightException);
 
-    i64 sendCargo(1: Cargo cargo) throws (1: EmptyCargoException emptyException, 2: CargoWeigtExceededException weightException);
+    i32 sendCargo(1: Cargo cargo) throws (1: EmptyCargoException emptyException, 2: CargoWeigtExceededException weightException);
 
-    DeliveryStatus checkStatusById(1: i64 id);
+    DeliveryStatus checkStatusByHash(1: i32 hash);
 
 }

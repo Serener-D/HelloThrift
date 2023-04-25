@@ -8,7 +8,7 @@ import org.apache.thrift.transport.TTransport;
 
 public class JavaClient {
 
-    public static void main(String[] args) throws TException {
+    public static void main(String[] args) throws TException, InterruptedException {
         TTransport transport = new TSocket("localhost", 8080);
         transport.open();
 
@@ -18,6 +18,8 @@ public class JavaClient {
         String result = client.ping();
 
         System.out.println(result);
+
+        ClientCargoService clientCargoService = new ClientCargoService(client);
 
         transport.close();
     }

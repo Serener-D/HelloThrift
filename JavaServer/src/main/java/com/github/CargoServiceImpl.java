@@ -2,25 +2,26 @@ package com.github;
 
 public class CargoServiceImpl implements CargoService.Iface {
 
+    private ServerCargoService serverCargoService = new ServerCargoService();
+
     @Override
     public String ping() {
-        return "Pong";
+        return serverCargoService.ping();
     }
 
     @Override
     public String calculateShippingCost(Cargo cargo) throws EmptyCargoException, CargoWeigtExceededException {
-        return null;
-    }
-
-    // todo make it idempotent
-    @Override
-    public long sendCargo(Cargo cargo) throws EmptyCargoException, CargoWeigtExceededException {
-        return 0;
+        return serverCargoService.calculateShippingCost(cargo);
     }
 
     @Override
-    public DeliveryStatus checkStatusById(long id) {
-        return null;
+    public int sendCargo(Cargo cargo) throws EmptyCargoException, CargoWeigtExceededException {
+        return serverCargoService.sendCargo(cargo);
+    }
+
+    @Override
+    public DeliveryStatus checkStatusByHash(int hash) {
+        return serverCargoService.checkStatusByHash(hash);
     }
 
 }
