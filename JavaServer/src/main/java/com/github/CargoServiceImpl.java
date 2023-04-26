@@ -2,7 +2,7 @@ package com.github;
 
 public class CargoServiceImpl implements CargoService.Iface {
 
-    private ServerCargoService serverCargoService = new ServerCargoService();
+    private final ServerCargoService serverCargoService = new ServerCargoService();
 
     @Override
     public String ping() {

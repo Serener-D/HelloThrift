@@ -1,34 +1,106 @@
 package com.github;
 
+import lombok.extern.slf4j.Slf4j;
 import org.apache.thrift.TException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
+import static com.github.DeliveryStatus.DELIVERED;
+
+@Slf4j
 public class ClientCargoService {
 
-    private CargoService.Client client;
+    private final CargoService.Client client;
+    private final Random random;
+    private long productCounter;
+    private final ConcurrentHashMap<Integer, DeliveryStatus> sentCargo;
 
     public ClientCargoService(CargoService.Client client) throws TException, InterruptedException {
         this.client = client;
-
-        List<Product> productList = List.of(new Product(1000, "toyBears"), new Product(2000, "videoGames"));
-        Cargo cargo = new Cargo(productList, false, DeliveryType.BY_TRUCK);
-        String shippingCost = client.calculateShippingCost(cargo);
-        BigDecimal bigDecimalShippingCost = BigDecimal.valueOf(Double.parseDouble(shippingCost));
-        if (bigDecimalShippingCost.compareTo(BigDecimal.valueOf(1000)) > 0) {
-            int hash = client.sendCargo(cargo);
-            DeliveryStatus status = client.checkStatusByHash(hash);
-            System.out.println(status);
-            Thread.sleep(1200);
-            System.out.println(client.checkStatusByHash(hash));
-            Thread.sleep(1200);
-            System.out.println(client.checkStatusByHash(hash));
-            Thread.sleep(1200);
-            System.out.println(client.checkStatusByHash(hash));
-        }
-
+        this.random = new Random();
+        this.sentCargo = new ConcurrentHashMap<>();
     }
 
+    public void init() throws InterruptedException {
+        startCheckStatusLoop();
+        while (true) {
+            Cargo cargo = createCargo();
+            try {
+                BigDecimal cost = checkShippingCost(cargo);
+                if (cost.compareTo(BigDecimal.valueOf(10000)) < 0) {
+                    int hash = client.sendCargo(cargo);
+                    sentCargo.put(hash, DeliveryStatus.CREATED);
+                    log.info("Cargo sent, hash={}", hash);
+                } else {
+                    log.info("Shipping cost={} is too high", cost);
+                }
+            } catch (EmptyCargoException emptyCargoException) {
+                log.error("Empty cargo was sent");
+            } catch (CargoWeigtExceededException cargoWeigtExceededException) {
+                log.error("Too heavy cargo was sent");
+            } catch (TException tException) {
+                log.error("Something bad happened", tException);
+            }
+            Thread.sleep(5000);
+        }
+    }
+
+    private void startCheckStatusLoop() {
+        Runnable runnable = () -> {
+            while (true) {
+                Set<Integer> hashes = sentCargo.keySet();
+                for (Integer hash : hashes) {
+                    try {
+                        DeliveryStatus status = client.checkStatusByHash(hash);
+                        if (status == DELIVERED) {
+                            log.info("Cargo={} Delivered", hash);
+                            sentCargo.remove(hash);
+                        } else {
+                            log.info("Current status={} for cargo={}", status, hash);
+                            sentCargo.put(hash, status);
+                        }
+                    } catch (TException tException) {
+                        log.error("Something bad happened", tException);
+                    }
+                }
+                try {
+                    Thread.sleep(10000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        };
+        Thread thread = new Thread(runnable);
+        thread.start();
+    }
+
+    private BigDecimal checkShippingCost(Cargo cargo) throws TException {
+        String shippingCost = client.calculateShippingCost(cargo);
+        return BigDecimal.valueOf(Double.parseDouble(shippingCost)).setScale(2, RoundingMode.CEILING);
+    }
+
+    private Cargo createCargo() {
+        List<Product> productList = createProductList();
+        DeliveryType deliveryType = DeliveryType.findByValue(random.nextInt(4));
+        boolean isUrgent = random.nextInt(7) == 0;
+        return new Cargo(productList, isUrgent, deliveryType);
+    }
+
+    private List<Product> createProductList() {
+        List<Product> productList = new ArrayList<>();
+        int productsNumber = random.nextInt(8);
+        for (int i = 0; i < productsNumber; i++) {
+            double productWeight = random.nextDouble(1200d);
+            double trimmedProductWeight = ((int) (productWeight * 100.0)) / 100.0;
+            productList.add(new Product(trimmedProductWeight, "product#" + productCounter++));
+        }
+        return productList;
+    }
 
 }

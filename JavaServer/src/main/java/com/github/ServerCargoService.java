@@ -75,7 +75,7 @@ public class ServerCargoService {
 
                 }
                 try {
-                    Thread.sleep(1000);
+                    Thread.sleep(4000);
                 } catch (InterruptedException e) {
                     throw new RuntimeException(e);
                 }
