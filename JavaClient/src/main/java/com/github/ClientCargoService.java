@@ -19,12 +19,12 @@ public class ClientCargoService {
     private final CargoService.Client client;
     private final Random random;
     private long productCounter;
-    private final ConcurrentHashMap<Integer, DeliveryStatus> sentCargo;
+    private final ConcurrentHashMap<Integer, DeliveryStatus> sentCargoCache;
 
-    public ClientCargoService(CargoService.Client client) throws TException, InterruptedException {
+    public ClientCargoService(CargoService.Client client) {
         this.client = client;
         this.random = new Random();
-        this.sentCargo = new ConcurrentHashMap<>();
+        this.sentCargoCache = new ConcurrentHashMap<>();
     }
 
     public void init() throws InterruptedException {
@@ -35,7 +35,7 @@ public class ClientCargoService {
                 BigDecimal cost = checkShippingCost(cargo);
                 if (cost.compareTo(BigDecimal.valueOf(10000)) < 0) {
                     int hash = client.sendCargo(cargo);
-                    sentCargo.put(hash, DeliveryStatus.CREATED);
+                    sentCargoCache.put(hash, DeliveryStatus.CREATED);
                     log.info("Cargo sent, hash={}", hash);
                 } else {
                     log.info("Shipping cost={} is too high", cost);
@@ -54,16 +54,16 @@ public class ClientCargoService {
     private void startCheckStatusLoop() {
         Runnable runnable = () -> {
             while (true) {
-                Set<Integer> hashes = sentCargo.keySet();
+                Set<Integer> hashes = sentCargoCache.keySet();
                 for (Integer hash : hashes) {
                     try {
                         DeliveryStatus status = client.checkStatusByHash(hash);
                         if (status == DELIVERED) {
                             log.info("Cargo={} Delivered", hash);
-                            sentCargo.remove(hash);
+                            sentCargoCache.remove(hash);
                         } else {
                             log.info("Current status={} for cargo={}", status, hash);
-                            sentCargo.put(hash, status);
+                            sentCargoCache.put(hash, status);
                         }
                     } catch (TException tException) {
                         log.error("Something bad happened", tException);
